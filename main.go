@@ -32,12 +32,34 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-func hello(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello!"))
-}
+type multiWeatherProvider []weatherProvider
 
 type weatherProvider interface {
 	temperature(city string) (float64, error)
+}
+
+func (w multiWeatherProvider) temperature(city string) (float64, error) {
+	sum := 0.0
+	for _, provider := range w {
+		k, err := provider.temperature(city)
+		if err != nil {
+			return 0, err
+		}
+		sum += k
+	}
+	return sum / float64(len(w)), nil
+}
+
+func temperature(city string, providers ...weatherProvider) (float64, error) {
+	sum := 0.0
+	for _, provider := range providers {
+		k, err := provider.temperature(city)
+		if err != nil {
+			return 0, err
+		}
+		sum += k
+	}
+	return sum / float64(len(providers)), nil
 }
 
 type weatherData struct {
@@ -90,30 +112,4 @@ func (w weatherUnderground) temperature(city string) (float64, error) {
 	kelvin := d.Observation.Celsius + 273.15
 	log.Printf("weatherUnderground: %s: %.2f", city, kelvin)
 	return kelvin, nil
-}
-
-func temperature(city string, providers ...weatherProvider) (float64, error) {
-	sum := 0.0
-	for _, provider := range providers {
-		k, err := provider.temperature(city)
-		if err != nil {
-			return 0, err
-		}
-		sum += k
-	}
-	return sum / float64(len(providers)), nil
-}
-
-type multiWeatherProvider []weatherProvider
-
-func (w multiWeatherProvider) temperature(city string) (float64, error) {
-	sum := 0.0
-	for _, provider := range w {
-		k, err := provider.temperature(city)
-		if err != nil {
-			return 0, err
-		}
-		sum += k
-	}
-	return sum / float64(len(w)), nil
 }
