@@ -10,8 +10,9 @@ import (
 
 func main() {
 	mw := multiWeatherProvider{
-		openWeatherMap{apiKey: "2e510300a59f529bab24643da6d33e42"},
-		weatherUnderground{apiKey: "345509aa1c2ec5d6"},
+		openWeatherMap{apiKey: "x"},
+		weatherUnderground{apiKey: "x"},
+		darkySky{apiKey: "x"}
 	}
 
 	http.HandleFunc("/weather/", func(w http.ResponseWriter, r *http.Request) {
@@ -132,4 +133,22 @@ func (w weatherUnderground) temperature(city string) (float64, error) {
 	kelvin := d.Observation.Celsius + 273.15
 	log.Printf("weatherUnderground: %s: %.2f", city, kelvin)
 	return kelvin, nil
+}
+
+func (w darkSky) temperature(city string) (float64, error) {
+	resp, err := http.Get("https://api.darksky.net/forecast/" + w.apiKey + "/conditions/q/" + city)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	var d struct {
+		Main struct {
+			Kelvin float64 `json:"temp"`
+		} `json:"main"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
+		return 0, err
+	}
+	log.Printf("darkSky: %s: %.2f", city, d.Main.Kelvin)
+	return d.Main.Kelvin, nil
 }
